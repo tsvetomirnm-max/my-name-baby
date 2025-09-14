@@ -44,6 +44,18 @@
   .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px}
   .ok{color:#0f766e}
   .err{color:#b91c1c}
+
+
+    /* Stars */
+.star-wrap{display:flex; gap:10px; align-items:center; padding:4px 0}
+.star{
+  width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center;
+  cursor:pointer; border:0; background:transparent; padding:0;
+}
+.star svg{width:36px; height:36px; stroke:#1E90FF; stroke-width:2px; fill:transparent; transition:fill .12s ease}
+.star.filled svg{fill:#1E90FF}
+.star:focus-visible{outline:2px solid #1E90FF; border-radius:6px; outline-offset:2px}
+    
 </style>
 </head>
 <body>
@@ -99,12 +111,28 @@
           </select>
         </label>
 
-        <label>Оценка (1–5)
-          <select id="score">
-            <option value="">— избери —</option>
-            <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
-          </select>
-        </label>
+<label>Оценка (1–5)
+  <div id="star-rating" class="star-wrap" role="radiogroup" aria-label="Оценка 1 до 5">
+    <button type="button" class="star" data-value="1" role="radio" aria-checked="false" aria-label="1 звезда">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>
+    </button>
+    <button type="button" class="star" data-value="2" role="radio" aria-checked="false" aria-label="2 звезди">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>
+    </button>
+    <button type="button" class="star" data-value="3" role="radio" aria-checked="false" aria-label="3 звезди">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>
+    </button>
+    <button type="button" class="star" data-value="4" role="radio" aria-checked="false" aria-label="4 звезди">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>
+    </button>
+    <button type="button" class="star" data-value="5" role="radio" aria-checked="false" aria-label="5 звезди">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>
+    </button>
+  </div>
+  <!-- hidden input keeps your existing JS working -->
+  <input id="score" type="hidden" value="">
+</label>
+
       </div>
 
       <button id="send">Изпрати</button>
@@ -184,6 +212,44 @@ function isCyrillicName(s){
       }
     }
     await loadTop();
+
+
+    // STAR WIDGET LOGIC
+const stars = Array.from(document.querySelectorAll('#star-rating .star'));
+const scoreInput = document.getElementById('score');
+let chosen = 0;
+
+function paint(n){
+  stars.forEach((btn, i)=>{
+    const filled = i < n;
+    btn.classList.toggle('filled', filled);
+    btn.setAttribute('aria-checked', filled && i+1 === n ? 'true' : 'false');
+  });
+}
+
+function setScore(n){
+  chosen = n;
+  scoreInput.value = String(n);
+  paint(n);
+}
+
+stars.forEach(btn=>{
+  const val = Number(btn.dataset.value);
+  btn.addEventListener('mouseenter', ()=>paint(val));
+  btn.addEventListener('mouseleave', ()=>paint(chosen));
+  btn.addEventListener('click', ()=>setScore(val));
+});
+
+// keyboard: left/right, space/enter
+const group = document.getElementById('star-rating');
+group.addEventListener('keydown', (e)=>{
+  if (e.key === 'ArrowRight' || e.key === 'ArrowUp'){ e.preventDefault(); setScore(Math.min(5, (chosen||0)+1)); stars[(chosen||1)-1].focus(); }
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowDown'){ e.preventDefault(); setScore(Math.max(1, (chosen||1)-1)); stars[(chosen||1)-1].focus(); }
+  if (e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); setScore(chosen || 1); }
+});
+
+// initial paint
+paint(0);
 
     // tiny debounce helper
 const debounce = (fn, ms=300) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; };
