@@ -40,20 +40,44 @@
 
   <script type="module">
     import { supabase, getFingerprint } from "/assets/app.js";
-    // Make sure you have a 'messages' table (see SQL in privacy page)
-    const msg = document.getElementById("msg");
-    document.getElementById("send").onclick = async ()=>{
-      const body = document.getElementById("body").value.trim();
-      const email = document.getElementById("email").value.trim() || null;
-      if (!body){ msg.className="err"; msg.textContent="Моля въведи съобщение."; return; }
-      msg.className="muted"; msg.textContent="Изпращаме…";
-      const { error } = await supabase.from("messages").insert({
-        body, email, user_fingerprint: getFingerprint(), user_agent: navigator.userAgent || null
-      });
-      msg.className = error ? "err" : "ok";
-      msg.textContent = error ? ("Грешка: " + error.message) : "Благодарим! Ще се свържем при нужда.";
-      if (!error){ document.getElementById("body").value=""; document.getElementById("email").value=""; }
-    };
+
+    const msgEl = document.getElementById("msg");
+    const bodyEl = document.getElementById("body");
+    const emailEl = document.getElementById("email");
+
+    document.getElementById("send").addEventListener("click", async () => {
+      const body = bodyEl.value.trim();
+      const email = emailEl.value.trim() || null;
+
+      if (!body) {
+        msgEl.className = "err";
+        msgEl.textContent = "Моля, въведи съобщение.";
+        return;
+      }
+
+      msgEl.className = "muted";
+      msgEl.textContent = "Изпращаме…";
+
+      const { error } = await supabase
+        .from("messages")
+        .insert({
+          body,
+          email,
+          user_fingerprint: getFingerprint(),
+          user_agent: navigator.userAgent || null
+        });
+
+      if (error) {
+        msgEl.className = "err";
+        msgEl.textContent = "Грешка: " + error.message;
+        return;
+      }
+
+      msgEl.className = "ok";
+      msgEl.textContent = "Благодарим! Съобщението е изпратено.";
+      bodyEl.value = "";
+      emailEl.value = "";
+    });
   </script>
 </body>
 </html>
