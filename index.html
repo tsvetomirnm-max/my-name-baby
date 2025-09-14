@@ -9,17 +9,62 @@
     .wrap{max-width:720px; margin:60px auto; padding:0 16px;}
     .card{background:#fff; border:1px solid #E5E7EB; border-radius:14px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,.04);}
     h1{font-size:28px; margin:0 0 12px;}
-    p{margin:8px 0 0; color:#64748B;}
-    .cta{display:inline-block; margin-top:16px; padding:10px 16px; border-radius:999px; background:#1E90FF; color:#fff; text-decoration:none;}
+    p{margin:8px 0 16px; color:#64748B;}
+    ul{list-style:none; padding-left:0; margin:0}
+    li{padding:10px 0; border-bottom:1px solid #F1F5F9; display:flex; justify-content:space-between; gap:12px}
+    .muted{color:#64748B; font-size:14px}
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
       <h1>Моето Име</h1>
-      <p>Сайтът е в разработка. Скоро тук ще можете да оценявате имена.</p>
-      <a class="cta" href="#">Окей 🙂</a>
+      <p class="muted">Тестово извличаме топ 10 имена директно от базата. (Прочит само)</p>
+      <ul id="top-names"><li class="muted">Зареждане…</li></ul>
     </div>
   </div>
+
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+    // ⬇️ Paste your values from Supabase → Settings → API
+    const SUPABASE_URL = "https://ldabujbsyyqhewzlrjcg.supabase.co";
+    const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxkYWJ1amJzeXlxaGV3emxyamNnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4NjE2MjIsImV4cCI6MjA3MzQzNzYyMn0.0s04-DXbURuaadddeWxzQWbpwYEi9_t7NGheMrqEN4w";
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+    const list = document.getElementById("top-names");
+
+    try {
+      // read from the view we created; sort by holder Bayesian score (desc)
+      const { data, error } = await supabase
+        .from("name_stats")
+        .select("*")
+        .order("bayesian_holder", { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+
+      list.innerHTML = "";
+      (data || []).forEach(row => {
+        const li = document.createElement("li");
+        const left = document.createElement("div");
+        left.textContent = row.display;
+        const right = document.createElement("div");
+        right.className = "muted";
+        const holder = row.avg_holder ?? "—";
+        const total  = row.avg_total  ?? "—";
+        right.textContent = `Носители ★${holder} · Общо ★${total}`;
+        li.append(left, right);
+        list.append(li);
+      });
+
+      if (!data || data.length === 0) {
+        list.innerHTML = '<li class="muted">Няма данни още. (Добавяме оценки по-късно)</li>';
+      }
+    } catch (e) {
+      list.innerHTML = `<li class="muted">Грешка при четене: ${e.message}</li>`;
+    }
+  </script>
 </body>
 </html>
