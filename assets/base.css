@@ -10,13 +10,9 @@ li{padding:10px 0; border-bottom:1px solid #F1F5F9;}
 .muted{color:#64748B; font-size:14px}
 label{display:block; font-size:14px; color:#334155; margin-top:10px}
 input, select, button{font:inherit}
-input[type="text"], textarea, select{
-  width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #E5E7EB; border-radius:10px; outline:none;
-}
+input[type="text"], textarea, select{ width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #E5E7EB; border-radius:10px; outline:none; }
 button{margin-top:12px; padding:10px 16px; border-radius:999px; border:0; background:#1E90FF; color:#fff; cursor:pointer}
-.ok{color:#0f766e}
-.err{color:#b91c1c}
-.tiny{font-size:12px; color:#64748B; margin-top:6px}
+.ok{color:#0f766e}.err{color:#b91c1c}.tiny{font-size:12px; color:#64748B; margin-top:6px}
 
 /* Nav */
 .nav{display:flex; align-items:center; justify-content:space-between; margin:18px 0}
@@ -31,13 +27,13 @@ button{margin-top:12px; padding:10px 16px; border-radius:999px; border:0; backgr
 .chip.active{background:#1E90FF; color:#fff; border-color:#1E90FF}
 .chip:focus-visible{outline:2px solid #1E90FF; outline-offset:2px}
 
-/* grid helpers */
+/* grids */
 .row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
 .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px}
 
 /* big stars */
 .star-wrap{display:flex; gap:10px; align-items:center; padding:4px 0}
-.star{width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; border:0; background:transparent; padding:0;}
+.star{width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; border:0; background:transparent; padding:0}
 .star svg{width:36px; height:36px; stroke:#1E90FF; stroke-width:2px; fill:transparent; transition:fill .12s ease}
 .star.filled svg{fill:#1E90FF}
 .star:focus-visible{outline:2px solid #1E90FF; border-radius:6px; outline-offset:2px}
@@ -45,7 +41,7 @@ button{margin-top:12px; padding:10px 16px; border-radius:999px; border:0; backgr
 /* radio pills */
 .radio-group{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:6px}
 .radio{display:none}
-.radio + label{display:inline-block; padding:8px 12px; border:1px solid #E5E7EB; border-radius:999px; cursor:pointer; background:#fff; color:#0F172A; user-select:none;}
+.radio + label{display:inline-block; padding:8px 12px; border:1px solid #E5E7EB; border-radius:999px; cursor:pointer; background:#fff; color:#0F172A; user-select:none}
 .radio:checked + label{ background:#1E90FF; color:#fff; border-color:#1E90FF }
 .radio:focus-visible + label{ outline:2px solid #1E90FF; outline-offset:2px }
 .radio[disabled] + label{ opacity:.5; cursor:not-allowed }
