@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="bg">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Моето Име — Игра</title>
+  <link rel="stylesheet" href="/assets/base.css">
+</head>
+<body>
+  <div class="wrap">
+    <nav class="nav">
+      <div class="brand"><a href="/">Моето Име</a></div>
+      <div class="links">
+        <a href="/">Начало</a>
+        <a href="/add-name.html">Добави име</a>
+        <a href="/game.html">Игра</a>
+        <a href="/about.html">За нас</a>
+        <a href="/privacy.html">Поверителност</a>
+      </div>
+    </nav>
+
+    <div class="card">
+      <h1>Оцени имената</h1>
+      <div class="chips" id="gchips">
+        <button class="chip active" data-g="all">Всички</button>
+        <button class="chip" data-g="f">Момичета</button>
+        <button class="chip" data-g="m">Момчета</button>
+        <button class="chip" data-g="u">За всички</button>
+      </div>
+      <div id="pane">
+        <h2 id="nm">—</h2>
+        <div class="row-stars">
+          ${[1,2,3,4,5].map(v=>`<button type="button" class="row-star" data-v="${v}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>
+          </button>`).join("")}
+        </div>
+        <div class="tiny muted" id="status"></div>
+        <div style="margin-top:10px">
+          <button id="skip" class="chip">Пропусни</button>
+          <button id="next" class="chip">Следващо</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase, getFingerprint, paintRowStars } from "/assets/app.js";
+    const nm = document.getElementById("nm");
+    const status = document.getElementById("status");
+    const starsBox = document.querySelector("#pane .row-stars");
+
+    let gender = "all", pool = [], idx = 0;
+
+    async function loadPool(){
+      status.textContent = "Зареждам…";
+      let q = supabase.from("name_stats").select("id,display,gender").order("bayesian_total", { ascending:false }).limit(200);
+      if (gender!=="all") q = q.eq("gender", gender);
+      const { data, error } = await q;
+      pool = data || [];
+      idx = 0;
+      status.textContent = error ? ("Грешка: " + error.message) : "";
+      showCurrent();
+    }
+
+    function showCurrent(){
+      if (!pool.length){ nm.textContent = "Няма данни."; return; }
+      const cur = pool[idx % pool.length];
+      nm.textContent = cur.display;
+      paintRowStars(starsBox, 0);
+    }
+
+    async function rate(v){
+      const cur = pool[idx % pool.length];
+      paintRowStars(starsBox, v);
+      status.textContent = "Записваме…";
+      const { error } = await supabase.from("ratings").upsert({
+        name_id: cur.id, rater_is_holder:false, age_bucket:null, score:v, user_fingerprint:getFingerprint()
+      }, { onConflict: 'name_id,user_fingerprint' });
+      status.textContent = error ? ("Грешка: " + (error.message||"")) : "Записано ✓";
+    }
+
+    starsBox.addEventListener("click", (e)=>{
+      const b = e.target.closest(".row-star"); if (!b) return; rate(Number(b.dataset.v||0));
+    });
+    document.getElementById("skip").onclick = ()=>{ idx++; showCurrent(); };
+    document.getElementById("next").onclick = ()=>{ idx++; showCurrent(); };
+
+    document.getElementById("gchips").addEventListener("click",(e)=>{
+      const btn = e.target.closest(".chip"); if (!btn) return;
+      [...document.querySelectorAll("#gchips .chip")].forEach(c=>c.classList.remove("active"));
+      btn.classList.add("active"); gender = btn.dataset.g; loadPool();
+    });
+
+    loadPool();
+  </script>
+</body>
+</html>
