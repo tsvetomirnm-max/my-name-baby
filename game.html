@@ -31,13 +31,14 @@
       <div id="pane">
         <h2 id="nm">—</h2>
         <div class="row-stars" id="stars">
-          <button type="button" class="row-star" data-v="1"><svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
-          <button type="button" class="row-star" data-v="2"><svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
-          <button type="button" class="row-star" data-v="3"><svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
-          <button type="button" class="row-star" data-v="4"><svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
-          <button type="button" class="row-star" data-v="5"><svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
+          <button type="button" class="row-star" data-v="1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
+          <button type="button" class="row-star" data-v="2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
+          <button type="button" class="row-star" data-v="3"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
+          <button type="button" class="row-star" data-v="4"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
+          <button type="button" class="row-star" data-v="5"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
         </div>
         <div class="tiny muted" id="status"></div>
+
         <div style="margin-top:10px">
           <button id="skip" class="chip">Пропусни</button>
           <button id="next" class="chip">Следващо</button>
@@ -62,39 +63,53 @@
 
     async function loadPool(){
       status.textContent = "Зареждам…";
-      let q = supabase.from("name_stats")
-        .select("id,display,gender")
-        .limit(200);
+      let q = supabase.from("name_stats").select("id,display,gender").limit(200);
       if (gender !== "all") q = q.eq("gender", gender);
       const { data, error } = await q;
       if (error){ status.textContent = "Грешка: " + error.message; return; }
       pool = shuffle(data || []);
-      idx = Math.floor(Math.random()* (pool.length || 1)); // random start
+      idx = Math.floor(Math.random() * Math.max(pool.length, 1));
       status.textContent = "";
       showCurrent();
     }
 
     function showCurrent(){
-      if (!pool.length){ nm.textContent = "Няма данни."; return; }
+      if (!pool.length){ nm.textContent = "Няма данни."; paintRowStars(starsBox, 0); return; }
       const cur = pool[idx % pool.length];
       nm.textContent = cur.display;
       paintRowStars(starsBox, 0);
     }
 
-    async function rate(v){
+    // Auto-advance: save in background, move to next immediately
+    function rate(v){
+      if (!pool.length) return;
       const cur = pool[idx % pool.length];
-      paintRowStars(starsBox, v);
-      status.textContent = "Записваме…";
-      const { error } = await supabase.from("ratings").upsert({
-        name_id: cur.id, rater_is_holder:false, age_bucket:null, score:v, user_fingerprint:getFingerprint()
-      }, { onConflict: 'name_id,user_fingerprint' });
-      status.textContent = error ? ("Грешка: " + (error.message||"")) : "Записано ✓";
+
+      // Fire-and-forget save
+      supabase.from("ratings").upsert({
+        name_id: cur.id,
+        rater_is_holder: false,
+        age_bucket: null,
+        score: v,
+        user_fingerprint: getFingerprint()
+      }, { onConflict: 'name_id,user_fingerprint' })
+      .then(({ error })=>{
+        if (error) status.textContent = "Грешка при запис: " + (error.message || "");
+        else { status.textContent = "Оценено ✓"; setTimeout(()=> status.textContent="", 1200); }
+      })
+      .catch(()=>{ status.textContent = "Грешка при запис."; setTimeout(()=> status.textContent="", 1200); });
+
+      // Advance immediately
+      idx++;
+      showCurrent();
     }
 
     starsBox.addEventListener("click", (e)=>{
       const b = e.target.closest(".row-star"); if (!b) return;
-      rate(Number(b.dataset.v||0));
+      const v = Number(b.dataset.v || 0);
+      rate(v);
     });
+
     document.getElementById("skip").onclick = ()=>{ idx++; showCurrent(); };
     document.getElementById("next").onclick = ()=>{ idx++; showCurrent(); };
 
