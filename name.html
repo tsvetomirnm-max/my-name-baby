@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Моето Име — Име</title>
   <link rel="stylesheet" href="/assets/base.css">
+  <style>
+    .bars{display:flex; flex-direction:column; gap:8px}
+    .bar{display:grid; grid-template-columns:140px 1fr auto; align-items:center; gap:12px}
+    .bar .label{color:#334155}
+    .bar .track{height:10px; background:#E5E7EB; border-radius:999px; overflow:hidden}
+    .bar .fill{height:100%; background:#1E90FF}
+    .bar .val{font-size:12px; color:#64748B}
+  </style>
 </head>
 <body>
   <div class="wrap">
@@ -20,6 +28,12 @@
     </nav>
 
     <div class="card" id="name-card"><h1>Зареждане…</h1></div>
+
+    <div class="card">
+      <h2>Разпределение по възрастови групи</h2>
+      <div id="age-bars" class="bars"></div>
+      <p class="tiny muted">Ширината на лентата е средната оценка (0–5). Числото в края е брой оценки.</p>
+    </div>
 
     <div class="card">
       <h2>Подобни имена</h2>
@@ -43,6 +57,7 @@
     const nameCard = document.getElementById("name-card");
     const similar = document.getElementById("similar");
     const head = document.getElementById("results-head");
+    const ageBars = document.getElementById("age-bars");
 
     if (!slug){ nameCard.innerHTML = "<h1>Липсва параметър ?s=</h1>"; throw new Error("no slug"); }
 
@@ -52,18 +67,17 @@
 
     // overall stats from view
     const { data: stat } = await supabase.from("name_stats").select("*").eq("id", nameRow.id).maybeSingle();
-    // holder/non-holder counts
+    // counts
     const [h, n] = await Promise.all([
-      supabase.from("ratings").select("id,score", { count: "exact" }).eq("name_id", nameRow.id).eq("rater_is_holder", true),
-      supabase.from("ratings").select("id,score", { count: "exact" }).eq("name_id", nameRow.id).eq("rater_is_holder", false)
+      supabase.from("ratings").select("id", { count: "exact", head: true }).eq("name_id", nameRow.id).eq("rater_is_holder", true),
+      supabase.from("ratings").select("id", { count: "exact", head: true }).eq("name_id", nameRow.id).eq("rater_is_holder", false)
     ]);
-
     const holderCount = h.count || 0;
     const nonHolderCount = n.count || 0;
 
     nameCard.innerHTML = `
       <h1>${nameRow.display}</h1>
-      <p class="muted">Пол: ${nameRow.gender==='m'?'М':'f'===nameRow.gender?'Ж':'За всички'}</p>
+      <p class="muted">Пол: ${nameRow.gender==='m'?'Мъжки':nameRow.gender==='f'?'Женски':'За всички'}</p>
       <div class="row3">
         <div><strong>Носители</strong><br><span class="muted">${stat?.avg_holder ?? "—"} ${ICONS.star14} · ${holderCount} ${ICONS.person14}</span></div>
         <div><strong>Посетители</strong><br><span class="muted">${stat?.avg_total ?? "—"} ${ICONS.star14} · ${nonHolderCount} ${ICONS.person14}</span></div>
@@ -71,7 +85,38 @@
       </div>
     `;
 
-    // Similar names (same gender, same first 2 letters of display)
+    // ----- AGE BARS (avg score per age bucket, overall) -----
+    const { data: rows } = await supabase.from("ratings")
+      .select("age_bucket, score")
+      .eq("name_id", nameRow.id);
+
+    const buckets = ["10-19","20-29","30-39","40-49","50-59","60+",""]; // "" => Без посочване
+    const labels  = {"":"Без посочване"};
+    const agg = new Map();
+    (rows||[]).forEach(r=>{
+      const k = r.age_bucket || "";
+      const a = agg.get(k) || {sum:0, n:0};
+      a.sum += Number(r.score||0); a.n += 1; agg.set(k,a);
+    });
+
+    const out = [];
+    let maxAvg = 5;
+    buckets.forEach(k=>{
+      const a = agg.get(k);
+      const avg = a ? (a.sum / a.n) : 0;
+      const cnt = a ? a.n : 0;
+      out.push({ k, label: labels[k] || k, avg, cnt });
+    });
+
+    ageBars.innerHTML = out.map(({label,avg,cnt})=>`
+      <div class="bar">
+        <div class="label">${label}</div>
+        <div class="track"><div class="fill" style="width:${(avg/maxAvg)*100}%"></div></div>
+        <div class="val">${avg ? avg.toFixed(2) : "—"} · ${cnt}</div>
+      </div>
+    `).join("");
+
+    // ----- Similar names -----
     const prefix = (nameRow.display || "").slice(0,2);
     let q = supabase.from("name_stats")
       .select("id, display, gender, avg_holder, avg_total, votes_total, normalized_slug")
@@ -120,7 +165,7 @@
         const row = star.closest(".result-row"); const nameId = row?.dataset?.id; if (!nameId) return;
         const val = Number(star.dataset.v || 0);
         const bar = row.querySelector(".row-stars");
-        paintRowStars(bar, val);
+        (bar.querySelectorAll('.row-star')).forEach((b,i)=>b.classList.toggle('filled', i<val));
         pendingValues.set(nameId, val);
         const old = pendingTimers.get(nameId); if (old) clearTimeout(old);
         const tid = setTimeout(async ()=>{
