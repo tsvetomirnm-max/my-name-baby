@@ -60,13 +60,24 @@
     .radio[disabled] + label{ opacity:.5; cursor:not-allowed }
     .radio-group.disabled label{ opacity:.5; pointer-events:none }
     .tiny{font-size:12px; color:#64748B; margin-top:6px}
+
+
+    /* Mini stars inside the browse list */
+.mini-rate{ margin-top:8px; display:none }
+.mini-rate.open{ display:block }
+.mini-stars{ display:flex; gap:8px; align-items:center }
+.mini-star{ width:28px; height:28px; background:transparent; border:0; cursor:pointer; padding:0 }
+.mini-star svg{ width:28px; height:28px; stroke:#1E90FF; stroke-width:2px; fill:transparent; transition:fill .12s ease }
+.mini-star.filled svg{ fill:#1E90FF }
+.rate-btn{ margin-left:8px }
+    
   </style>
 </head>
 <body>
   <div class="wrap">
     <!-- RATING CARD FIRST -->
     <div class="card">
-      <h1>Колко обичаш името си</h1>
+      <h1>Колко обичаш името си?</h1>
       <p class="muted">Въведи името си на кирилица, избери възрастова група и постави оценка 1–5.</p>
 
       <label>Твоето име (на кирилица)
@@ -233,25 +244,104 @@
     let currentGender = "all";
 
     function renderResults(rows){
-      results.innerHTML = "";
-      if (!rows || rows.length === 0){
-        results.innerHTML = '<li class="muted">Няма съвпадения.</li>'; return;
-      }
-      for (const r of rows){
-        const li = document.createElement("li");
-        const left = document.createElement("div");
-        left.textContent = r.display;
-        const right = document.createElement("div");
-        right.className = "muted";
-        right.textContent = `Носители ★${r.avg_holder ?? "—"} · Общо ★${r.avg_total ?? "—"} · ${r.votes_total ?? 0} гласа`;
-        li.append(left,right);
-        results.append(li);
-      }
+  results.innerHTML = "";
+  if (!rows || rows.length === 0){
+    results.innerHTML = '<li class="muted">Няма съвпадения.</li>'; return;
+  }
+  for (const r of rows){
+    const li = document.createElement("li");
+
+    const left = document.createElement("div");
+    left.textContent = r.display;
+
+    const right = document.createElement("div");
+    right.className = "muted";
+    right.innerHTML = `Носители ★${r.avg_holder ?? "—"} · Общо ★${r.avg_total ?? "—"} · ${r.votes_total ?? 0} гласа
+      <button class="chip rate-btn" data-id="${r.id}">Оцени</button>`;
+
+    // mini star bar (hidden until "Оцени")
+    const mini = document.createElement("div");
+    mini.className = "mini-rate";
+    mini.innerHTML = `
+      <div class="mini-stars" role="radiogroup" aria-label="Оценка (не съм носител)">
+        ${[1,2,3,4,5].map(v=>`
+          <button type="button" class="mini-star" data-v="${v}" aria-label="${v} звезди">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>
+          </button>`).join("")}
+      </div>
+      <div class="muted tiny">Оценяваш като посетител (не носиш това име).</div>
+    `;
+
+    li.append(left, right);
+    // full-width row for mini stars
+    const row = document.createElement("div");
+    row.style.flexBasis = "100%";
+    row.append(mini);
+    li.append(row);
+
+    // stash name id on the mini block
+    mini.dataset.id = r.id;
+
+    results.append(li);
+  }
+}
+
+    // paint helper for mini stars
+function paintMini(container, n){
+  container.querySelectorAll('.mini-star').forEach((btn,i)=>{
+    btn.classList.toggle('filled', i < n);
+  });
+}
+
+// delegate clicks in the results list
+results.addEventListener("click", async (e)=>{
+  const btn = e.target.closest(".rate-btn");
+  if (btn){
+    // toggle the mini stars block in the same list item
+    const li = btn.closest("li");
+    const mini = li.querySelector(".mini-rate");
+    mini.classList.toggle("open");
+    return;
+  }
+
+  const star = e.target.closest(".mini-star");
+  if (star){
+    const mini = star.closest(".mini-rate");
+    const nameId = mini.dataset.id;
+    const val = Number(star.dataset.v || 0);
+    if (!val) return;
+
+    // UI: paint immediately
+    paintMini(mini, val);
+
+    // Write rating as NON-holder
+    const { error } = await supabase.from("ratings").insert({
+      name_id: nameId,
+      rater_is_holder: false,
+      age_bucket: null,
+      score: val,
+      user_fingerprint: getFingerprint()
+    });
+
+    if (error){
+      // soft-dupe or other issue
+      const msgEl = document.createElement('div');
+      msgEl.className = "muted tiny";
+      msgEl.textContent = "Неуспешно записване: " + (error.message || "грешка");
+      mini.append(msgEl);
+      return;
     }
+
+    // success → collapse and refresh list so stats update
+    mini.classList.remove("open");
+    await searchNow();
+  }
+});
 
     async function searchNow(){
       const term = qInput.value.trim();
-      let q = supabase.from("name_stats").select("display, gender, avg_holder, avg_total, votes_total, normalized_slug");
+      let q = supabase.from("name_stats")
+  .select("id, display, gender, avg_holder, avg_total, votes_total, normalized_slug"); // ← added id
       if (term) q = q.ilike("display", `%${term}%`);
       if (currentGender !== "all") q = q.eq("gender", currentGender);
       q = q.order("bayesian_total", { ascending:false }).limit(25);
