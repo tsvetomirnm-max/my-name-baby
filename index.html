@@ -5,29 +5,46 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Моето Име</title>
   <style>
-    body{font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif; margin:0; background:#FAFBFC; color:#0F172A;}
-    .wrap{max-width:720px; margin:60px auto; padding:0 16px;}
-    .card{background:#fff; border:1px solid #E5E7EB; border-radius:14px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,.04); margin-bottom:20px;}
-    h1{font-size:28px; margin:0 0 12px;}
-    h2{font-size:20px; margin:0 0 10px;}
-    p{margin:8px 0 16px; color:#64748B;}
-    ul{list-style:none; padding-left:0; margin:0}
-    li{padding:10px 0; border-bottom:1px solid #F1F5F9; display:flex; justify-content:space-between; gap:12px}
-    .muted{color:#64748B; font-size:14px}
-    label{display:block; font-size:14px; color:#334155; margin-top:10px}
-    input, select, button{font:inherit}
-    input[type="text"], select{
-      width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #E5E7EB; border-radius:10px; outline:none;
-    }
-    button{margin-top:12px; padding:10px 16px; border-radius:999px; border:0; background:#1E90FF; color:#fff; cursor:pointer}
-    .row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
-    .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px}
-    .ok{color:#0f766e}
-    .err{color:#b91c1c}
-    .chips{display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 12px}
-.chip{padding:6px 10px; border:1px solid #E5E7EB; border-radius:999px; cursor:pointer; background:#fff}
-.chip.active{background:#1E90FF; color:#fff; border-color:#1E90FF}
-  </style>
+  body{font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif; margin:0; background:#FAFBFC; color:#0F172A;}
+  .wrap{max-width:720px; margin:60px auto; padding:0 16px;}
+  .card{background:#fff; border:1px solid #E5E7EB; border-radius:14px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,.04); margin-bottom:20px;}
+  h1{font-size:28px; margin:0 0 12px;}
+  h2{font-size:20px; margin:0 0 10px;}
+  p{margin:8px 0 16px; color:#64748B;}
+  ul{list-style:none; padding-left:0; margin:0}
+  li{padding:10px 0; border-bottom:1px solid #F1F5F9; display:flex; justify-content:space-between; gap:12px}
+  .muted{color:#64748B; font-size:14px}
+  label{display:block; font-size:14px; color:#334155; margin-top:10px}
+  input, select, button{font:inherit}
+  input[type="text"], select{
+    width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #E5E7EB; border-radius:10px; outline:none;
+  }
+
+  /* primary buttons */
+  button{margin-top:12px; padding:10px 16px; border-radius:999px; border:0; background:#1E90FF; color:#fff; cursor:pointer}
+
+  /* chips (override button styles) */
+  .chips{display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 12px}
+  .chip{
+    padding:6px 10px;
+    border:1px solid #E5E7EB;
+    border-radius:999px;
+    cursor:pointer;
+    background:#fff;
+    color:#0F172A;          /* visible text when inactive */
+  }
+  .chip.active{
+    background:#1E90FF;
+    color:#fff;             /* white text when active */
+    border-color:#1E90FF;
+  }
+  .chip:focus-visible{outline:2px solid #1E90FF; outline-offset:2px}
+
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px}
+  .ok{color:#0f766e}
+  .err{color:#b91c1c}
+</style>
 </head>
 <body>
   <div class="wrap">
