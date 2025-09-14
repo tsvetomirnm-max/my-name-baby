@@ -31,8 +31,8 @@
       <div>
         <span class="muted">Пол (ако добавяме ново име)</span>
         <div id="genderGroup" class="radio-group" role="radiogroup" aria-label="Пол">
-          <input class="radio" type="radio" name="gender" id="g-m" value="m"><label for="g-m">М</label>
-          <input class="radio" type="radio" name="gender" id="g-f" value="f"><label for="g-f">Ж</label>
+          <input class="radio" type="radio" name="gender" id="g-m" value="m"><label for="g-m">Мъжки</label>
+          <input class="radio" type="radio" name="gender" id="g-f" value="f"><label for="g-f">Женски</label>
           <input class="radio" type="radio" name="gender" id="g-u" value="u"><label for="g-u">За всички</label>
         </div>
         <div id="genderHint" class="tiny"></div>
@@ -48,22 +48,12 @@
         </label>
 
         <label>Оценка (1–5)
-          <div id="star-rating" class="star-wrap" role="radiogroup" aria-label="Оценка 1 до 5">
-            <button type="button" class="star" data-value="1" role="radio" aria-checked="false" aria-label="1 звезда">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>
-            </button>
-            <button type="button" class="star" data-value="2" role="radio" aria-checked="false" aria-label="2 звезди">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>
-            </button>
-            <button type="button" class="star" data-value="3" role="radio" aria-checked="false" aria-label="3 звезди">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>
-            </button>
-            <button type="button" class="star" data-value="4" role="radio" aria-checked="false" aria-label="4 звезди">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>
-            </button>
-            <button type="button" class="star" data-value="5" role="radio" aria-checked="false" aria-label="5 звезди">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>
-            </button>
+          <div id="star-rating" class="star-wrap" role="radiогroup" aria-label="Оценка 1 до 5">
+            <button type="button" class="star" data-value="1" role="radio" aria-checked="false" aria-label="1 звезда"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
+            <button type="button" class="star" data-value="2" role="radio" aria-checked="false" aria-label="2 звезди"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
+            <button type="button" class="star" data-value="3" role="radio" aria-checked="false" aria-label="3 звезди"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
+            <button type="button" class="star" data-value="4" role="radio" aria-checked="false" aria-label="4 звезди"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
+            <button type="button" class="star" data-value="5" role="radio" aria-checked="false" aria-label="5 звезди"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
           </div>
           <input id="score" type="hidden" value="">
         </label>
@@ -218,11 +208,11 @@
             <div class="rate-line">
               <span class="cta-mini">Оцени</span>
               <div class="row-stars" role="radiogroup" aria-label="Оценка (посетител)">
-                <button type="button" class="row-star" data-v="1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
-                <button type="button" class="row-star" data-v="2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
-                <button type="button" class="row-star" data-v="3"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
-                <button type="button" class="row-star" data-v="4"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
-                <button type="button" class="row-star" data-v="5"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
+                <button type="button" class="row-star" data-v="1"><svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
+                <button type="button" class="row-star" data-v="2"><svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
+                <button type="button" class="row-star" data-v="3"><svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
+                <button type="button" class="row-star" data-v="4"><svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
+                <button type="button" class="row-star" data-v="5"><svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>
               </div>
               <span class="saved-tick" title="Записано">✔</span>
             </div>
