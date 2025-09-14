@@ -29,11 +29,13 @@
       </div>
       <div id="pane">
         <h2 id="nm">—</h2>
-        <div class="row-stars">
-          ${[1,2,3,4,5].map(v=>`<button type="button" class="row-star" data-v="${v}">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>
-          </button>`).join("")}
-        </div>
+       <div class="row-stars">
+  <button type="button" class="row-star" data-v="1">…svg…</button>
+  <button type="button" class="row-star" data-v="2">…svg…</button>
+  <button type="button" class="row-star" data-v="3">…svg…</button>
+  <button type="button" class="row-star" data-v="4">…svg…</button>
+  <button type="button" class="row-star" data-v="5">…svg…</button>
+</div>
         <div class="tiny muted" id="status"></div>
         <div style="margin-top:10px">
           <button id="skip" class="chip">Пропусни</button>
