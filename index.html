@@ -7,64 +7,196 @@
   <style>
     body{font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif; margin:0; background:#FAFBFC; color:#0F172A;}
     .wrap{max-width:720px; margin:60px auto; padding:0 16px;}
-    .card{background:#fff; border:1px solid #E5E7EB; border-radius:14px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,.04);}
+    .card{background:#fff; border:1px solid #E5E7EB; border-radius:14px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,.04); margin-bottom:20px;}
     h1{font-size:28px; margin:0 0 12px;}
+    h2{font-size:20px; margin:0 0 10px;}
     p{margin:8px 0 16px; color:#64748B;}
     ul{list-style:none; padding-left:0; margin:0}
     li{padding:10px 0; border-bottom:1px solid #F1F5F9; display:flex; justify-content:space-between; gap:12px}
     .muted{color:#64748B; font-size:14px}
+    label{display:block; font-size:14px; color:#334155; margin-top:10px}
+    input, select, button{font:inherit}
+    input[type="text"], select{
+      width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #E5E7EB; border-radius:10px; outline:none;
+    }
+    button{margin-top:12px; padding:10px 16px; border-radius:999px; border:0; background:#1E90FF; color:#fff; cursor:pointer}
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+    .ok{color:#0f766e}
+    .err{color:#b91c1c}
   </style>
 </head>
 <body>
   <div class="wrap">
+
+    <!-- READ LIST -->
     <div class="card">
       <h1>Моето Име</h1>
       <p class="muted">Тестово извличаме топ 10 имена директно от базата. (Прочит само)</p>
       <ul id="top-names"><li class="muted">Зареждане…</li></ul>
+    </div>
+
+    <!-- WRITE ONE RATING -->
+    <div class="card">
+      <h2>Дай оценка за собственото си име</h2>
+      <p class="muted">Малка проба: записваме една оценка в базата.</p>
+
+      <label>Твоето име (на кирилица)
+        <input id="myName" type="text" placeholder="напр. Цветомир" />
+      </label>
+
+      <div class="row">
+        <label>Възрастова група
+          <select id="age">
+            <option value="">— избери —</option>
+            <option>0-9</option><option>10-19</option><option>20-29</option>
+            <option>30-39</option><option>40-49</option><option>50-59</option><option>60+</option>
+          </select>
+        </label>
+
+        <label>Оценка (1–5)
+          <select id="score">
+            <option value="">— избери —</option>
+            <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+          </select>
+        </label>
+      </div>
+
+      <button id="send">Изпрати</button>
+      <p id="msg" class="muted"></p>
     </div>
   </div>
 
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-    // ⬇️ Paste your values from Supabase → Settings → API
+  // ⬇️ Paste your values from Supabase → Settings → API
     const SUPABASE_URL = "https://ldabujbsyyqhewzlrjcg.supabase.co";
     const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxkYWJ1amJzeXlxaGV3emxyamNnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4NjE2MjIsImV4cCI6MjA3MzQzNzYyMn0.0s04-DXbURuaadddeWxzQWbpwYEi9_t7NGheMrqEN4w";
 
+
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
-
     const list = document.getElementById("top-names");
+    const msg  = document.getElementById("msg");
 
-    try {
-      // read from the view we created; sort by holder Bayesian score (desc)
+    // tiny fingerprint for "one vote per device" (optional)
+    function getFingerprint(){
+      let id = localStorage.getItem("fp_mnb");
+      if(!id){
+        id = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+        localStorage.setItem("fp_mnb", id);
+      }
+      return id;
+    }
+
+    // Bulgarian slugify (same logic as Excel)
+    function slugBg(s){
+      s = (s || "").toString().trim().replace(/\u00A0/g, " ");
+      const repl = [
+        [/щ/gi,"sht"], [/ш/gi,"sh"],  [/ч/gi,"ch"],  [/ж/gi,"zh"],
+        [/ц/gi,"ts"],  [/ю/gi,"yu"],  [/я/gi,"ya"],  [/й/gi,"y"],
+        [/[\u045D\u040D]/g,"i"],      // ѝ Ѝ
+        [/[ьЬ]/g,""],                 // ь
+        [/ъ/gi,"a"],
+        [/а/gi,"a"], [/б/gi,"b"], [/в/gi,"v"], [/г/gi,"g"], [/д/gi,"d"],
+        [/е/gi,"e"], [/з/gi,"z"], [/и/gi,"i"], [/к/gi,"k"], [/л/gi,"l"],
+        [/м/gi,"m"], [/н/gi,"n"], [/о/gi,"o"], [/п/gi,"p"], [/р/gi,"r"],
+        [/с/gi,"s"], [/т/gi,"t"], [/у/gi,"u"], [/ф/gi,"f"], [/х/gi,"h"]
+      ];
+      for (const [re,to] of repl) s = s.replace(re,to);
+      return s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+    }
+
+    // READ: load top 10
+    async function loadTop(){
       const { data, error } = await supabase
         .from("name_stats")
         .select("*")
-        .order("bayesian_holder", { ascending: false })
+        .order("bayesian_holder", { ascending:false })
         .limit(10);
 
-      if (error) throw error;
-
       list.innerHTML = "";
-      (data || []).forEach(row => {
+      if (error) {
+        list.innerHTML = `<li class="muted">Грешка: ${error.message}</li>`;
+        return;
+      }
+      if (!data || data.length === 0) {
+        list.innerHTML = '<li class="muted">Няма данни още.</li>';
+        return;
+      }
+      for (const row of data) {
         const li = document.createElement("li");
         const left = document.createElement("div");
         left.textContent = row.display;
         const right = document.createElement("div");
         right.className = "muted";
-        const holder = row.avg_holder ?? "—";
-        const total  = row.avg_total  ?? "—";
-        right.textContent = `Носители ★${holder} · Общо ★${total}`;
-        li.append(left, right);
+        right.textContent = `Носители ★${row.avg_holder ?? "—"} · Общо ★${row.avg_total ?? "—"}`;
+        li.append(left,right);
         list.append(li);
+      }
+    }
+
+    await loadTop();
+
+    // WRITE: self-rating
+    document.getElementById("send").addEventListener("click", async () => {
+      msg.className = "muted";
+      msg.textContent = "Записваме…";
+
+      const nameInput = document.getElementById("myName").value.trim();
+      const age = document.getElementById("age").value;
+      const score = Number(document.getElementById("score").value || 0);
+
+      if (!nameInput || !age || !score) {
+        msg.className = "err";
+        msg.textContent = "Моля попълни име, възраст и оценка.";
+        return;
+      }
+
+      const slug = slugBg(nameInput);
+
+      // find the name by slug (must exist; adding new names will be a later step)
+      const { data: found, error: findErr } = await supabase
+        .from("names")
+        .select("id, display")
+        .eq("normalized_slug", slug)
+        .maybeSingle();
+
+      if (findErr) {
+        msg.className = "err";
+        msg.textContent = "Грешка при търсене: " + findErr.message;
+        return;
+      }
+      if (!found) {
+        msg.className = "err";
+        msg.textContent = "Това име още не е в списъка. Ще добавяме имена в следваща стъпка.";
+        return;
+      }
+
+      // insert rating
+      const { error: insErr } = await supabase.from("ratings").insert({
+        name_id: found.id,
+        rater_is_holder: true,
+        age_bucket: age,
+        score: score,
+        user_fingerprint: getFingerprint()
       });
 
-      if (!data || data.length === 0) {
-        list.innerHTML = '<li class="muted">Няма данни още. (Добавяме оценки по-късно)</li>';
+      if (insErr) {
+        msg.className = "err";
+        msg.textContent = "Неуспешно записване: " + insErr.message;
+        return;
       }
-    } catch (e) {
-      list.innerHTML = `<li class="muted">Грешка при четене: ${e.message}</li>`;
-    }
+
+      msg.className = "ok";
+      msg.textContent = "Готово! Благодарим 😊";
+
+      // refresh the list so you can see averages/votes change
+      await loadTop();
+    });
   </script>
 </body>
 </html>
+
+
+  
