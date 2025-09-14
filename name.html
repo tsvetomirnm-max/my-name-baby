@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="bg">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Моето Име — Име</title>
+  <link rel="stylesheet" href="/assets/base.css">
+</head>
+<body>
+  <div class="wrap">
+    <nav class="nav">
+      <div class="brand"><a href="/">Моето Име</a></div>
+      <div class="links">
+        <a href="/">Начало</a>
+        <a href="/add-name.html">Добави име</a>
+        <a href="/game.html">Игра</a>
+        <a href="/about.html">За нас</a>
+        <a href="/privacy.html">Поверителност</a>
+      </div>
+    </nav>
+
+    <div class="card" id="name-card"><h1>Зареждане…</h1></div>
+
+    <div class="card">
+      <h2>Подобни имена</h2>
+      <div class="results-head" id="results-head" style="display:none">
+        <div>Име</div><div>Носители</div><div>Общо</div><div>Гласове</div><div>Оцени</div>
+      </div>
+      <ul id="similar"></ul>
+    </div>
+
+    <div class="card">
+      <h2>Значение</h2>
+      <p class="muted">Скоро ще добавим значения и произход на имената.</p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase, getFingerprint, ICONS, paintRowStars } from "/assets/app.js";
+
+    const params = new URLSearchParams(location.search);
+    const slug = params.get("s");
+    const nameCard = document.getElementById("name-card");
+    const similar = document.getElementById("similar");
+    const head = document.getElementById("results-head");
+
+    if (!slug){ nameCard.innerHTML = "<h1>Липсва параметър ?s=</h1>"; throw new Error("no slug"); }
+
+    // fetch name + stats
+    const { data: nameRow } = await supabase.from("names").select("id, display, gender").eq("normalized_slug", slug).maybeSingle();
+    if (!nameRow){ nameCard.innerHTML = "<h1>Името не е намерено</h1>"; throw new Error("not found"); }
+
+    // overall stats from view
+    const { data: stat } = await supabase.from("name_stats").select("*").eq("id", nameRow.id).maybeSingle();
+    // holder/non-holder counts
+    const [h, n] = await Promise.all([
+      supabase.from("ratings").select("id,score", { count: "exact" }).eq("name_id", nameRow.id).eq("rater_is_holder", true),
+      supabase.from("ratings").select("id,score", { count: "exact" }).eq("name_id", nameRow.id).eq("rater_is_holder", false)
+    ]);
+
+    const holderCount = h.count || 0;
+    const nonHolderCount = n.count || 0;
+
+    nameCard.innerHTML = `
+      <h1>${nameRow.display}</h1>
+      <p class="muted">Пол: ${nameRow.gender==='m'?'М':'f'===nameRow.gender?'Ж':'За всички'}</p>
+      <div class="row3">
+        <div><strong>Носители</strong><br><span class="muted">${stat?.avg_holder ?? "—"} ${ICONS.star14} · ${holderCount} ${ICONS.person14}</span></div>
+        <div><strong>Посетители</strong><br><span class="muted">${stat?.avg_total ?? "—"} ${ICONS.star14} · ${nonHolderCount} ${ICONS.person14}</span></div>
+        <div><strong>Общо</strong><br><span class="muted">${stat?.avg_total ?? "—"} ${ICONS.star14} · ${(stat?.votes_total ?? (holderCount+nonHolderCount))} ${ICONS.person14}</span></div>
+      </div>
+    `;
+
+    // Similar names (same gender, same first 2 letters of display)
+    const prefix = (nameRow.display || "").slice(0,2);
+    let q = supabase.from("name_stats")
+      .select("id, display, gender, avg_holder, avg_total, votes_total, normalized_slug")
+      .eq("gender", nameRow.gender)
+      .ilike("display", `${prefix}%`)
+      .neq("id", nameRow.id)
+      .order("bayesian_total", { ascending:false })
+      .limit(20);
+
+    const { data: sim } = await q;
+    head.style.display = (sim && sim.length) ? "grid" : "none";
+    similar.innerHTML = (sim||[]).map(r=>`
+      <li class="result-row" data-id="${r.id}">
+        <div><a href="/name.html?s=${encodeURIComponent(r.normalized_slug)}">${r.display}</a></div>
+        <div class="muted">${r.avg_holder ?? "—"} ${ICONS.star14}</div>
+        <div class="muted">${r.avg_total ?? "—"} ${ICONS.star14}</div>
+        <div class="muted">${r.votes_total ?? 0} ${ICONS.person14}</div>
+        <div>
+          <div class="rate-line">
+            <span class="cta-mini">Оцени</span>
+            <div class="row-stars">
+              ${[1,2,3,4,5].map(v=>`
+                <button type="button" class="row-star" data-v="${v}">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>
+                </button>`).join("")}
+            </div>
+            <span class="saved-tick" title="Записано">✔</span>
+          </div>
+        </div>
+      </li>`).join("");
+
+    // Prefill my votes and enable quick rating in similar list
+    if (sim && sim.length){
+      const ids = sim.map(r=>r.id);
+      const { data: mine } = await supabase.from("ratings").select("name_id, score").in("name_id", ids).eq("user_fingerprint", getFingerprint());
+      const myMap = new Map((mine||[]).map(v=>[v.name_id, v.score]));
+      (sim||[]).forEach(r=>{
+        const row = similar.querySelector(`.result-row[data-id="${r.id}"]`);
+        const bar = row?.querySelector(".row-stars");
+        if (bar) paintRowStars(bar, myMap.get(r.id)||0);
+      });
+
+      const pendingTimers = new Map(), pendingValues = new Map();
+      similar.addEventListener("click", async (e)=>{
+        const star = e.target.closest(".row-star"); if (!star) return;
+        const row = star.closest(".result-row"); const nameId = row?.dataset?.id; if (!nameId) return;
+        const val = Number(star.dataset.v || 0);
+        const bar = row.querySelector(".row-stars");
+        paintRowStars(bar, val);
+        pendingValues.set(nameId, val);
+        const old = pendingTimers.get(nameId); if (old) clearTimeout(old);
+        const tid = setTimeout(async ()=>{
+          const score = pendingValues.get(nameId);
+          pendingTimers.delete(nameId); pendingValues.delete(nameId);
+          const { error } = await supabase.from("ratings").upsert({
+            name_id: nameId, rater_is_holder:false, age_bucket:null, score, user_fingerprint:getFingerprint()
+          }, { onConflict: 'name_id,user_fingerprint' });
+          if (!error){
+            const tick = row.querySelector(".saved-tick");
+            if (tick){ tick.classList.add("show"); setTimeout(()=>tick.classList.remove("show"),1600); }
+          }
+        }, 1200);
+        pendingTimers.set(nameId, tid);
+      });
+    }
+  </script>
+</body>
+</html>
