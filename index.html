@@ -21,6 +21,7 @@
     }
     button{margin-top:12px; padding:10px 16px; border-radius:999px; border:0; background:#1E90FF; color:#fff; cursor:pointer}
     .row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+    .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px}
     .ok{color:#0f766e}
     .err{color:#b91c1c}
   </style>
@@ -31,20 +32,29 @@
     <!-- READ LIST -->
     <div class="card">
       <h1>Моето Име</h1>
-      <p class="muted">Тестово извличаме топ 10 имена директно от базата. (Прочит само)</p>
+      <p class="muted">Тестово извличаме топ 10 имена директно от базата.</p>
       <ul id="top-names"><li class="muted">Зареждане…</li></ul>
     </div>
 
-    <!-- WRITE ONE RATING -->
+    <!-- WRITE ONE RATING (can add name if missing) -->
     <div class="card">
       <h2>Дай оценка за собственото си име</h2>
-      <p class="muted">Малка проба: записваме една оценка в базата.</p>
+      <p class="muted">Ако името липсва, ще го добавим със зададения пол.</p>
 
       <label>Твоето име (на кирилица)
         <input id="myName" type="text" placeholder="напр. Цветомир" />
       </label>
 
-      <div class="row">
+      <div class="row3">
+        <label>Пол (ако добавяме ново име)
+          <select id="gender">
+            <option value="">— избери —</option>
+            <option value="m">М</option>
+            <option value="f">Ж</option>
+            <option value="u">Уни</option>
+          </select>
+        </label>
+
         <label>Възрастова група
           <select id="age">
             <option value="">— избери —</option>
@@ -69,17 +79,14 @@
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-  // ⬇️ Paste your values from Supabase → Settings → API
-    const SUPABASE_URL = "https://ldabujbsyyqhewzlrjcg.supabase.co";
+    // Supabase (public anon key is OK to expose)
+    const SUPABASE_URL  = "https://ldabujbsyyqhewzlrjcg.supabase.co";
     const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxkYWJ1amJzeXlxaGV3emxyamNnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4NjE2MjIsImV4cCI6MjA3MzQzNzYyMn0.0s04-DXbURuaadddeWxzQWbpwYEi9_t7NGheMrqEN4w";
-
-
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
     const list = document.getElementById("top-names");
     const msg  = document.getElementById("msg");
 
-    // tiny fingerprint for "one vote per device" (optional)
     function getFingerprint(){
       let id = localStorage.getItem("fp_mnb");
       if(!id){
@@ -89,7 +96,7 @@
       return id;
     }
 
-    // Bulgarian slugify (same logic as Excel)
+    // Bulgarian slugify (same mapping as our Excel/VBA)
     function slugBg(s){
       s = (s || "").toString().trim().replace(/\u00A0/g, " ");
       const repl = [
@@ -107,7 +114,7 @@
       return s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
     }
 
-    // READ: load top 10
+    // READ: top 10
     async function loadTop(){
       const { data, error } = await supabase
         .from("name_stats")
@@ -116,14 +123,8 @@
         .limit(10);
 
       list.innerHTML = "";
-      if (error) {
-        list.innerHTML = `<li class="muted">Грешка: ${error.message}</li>`;
-        return;
-      }
-      if (!data || data.length === 0) {
-        list.innerHTML = '<li class="muted">Няма данни още.</li>';
-        return;
-      }
+      if (error) { list.innerHTML = `<li class="muted">Грешка: ${error.message}</li>`; return; }
+      if (!data || data.length === 0) { list.innerHTML = '<li class="muted">Няма данни още.</li>'; return; }
       for (const row of data) {
         const li = document.createElement("li");
         const left = document.createElement("div");
@@ -135,10 +136,9 @@
         list.append(li);
       }
     }
-
     await loadTop();
 
-    // WRITE: self-rating
+    // WRITE: add name if missing, then insert rating
     document.getElementById("send").addEventListener("click", async () => {
       msg.className = "muted";
       msg.textContent = "Записваме…";
@@ -146,35 +146,49 @@
       const nameInput = document.getElementById("myName").value.trim();
       const age = document.getElementById("age").value;
       const score = Number(document.getElementById("score").value || 0);
+      const gender = document.getElementById("gender").value; // may be empty
 
       if (!nameInput || !age || !score) {
-        msg.className = "err";
-        msg.textContent = "Моля попълни име, възраст и оценка.";
-        return;
+        msg.className = "err"; msg.textContent = "Моля попълни име, възраст и оценка."; return;
       }
 
       const slug = slugBg(nameInput);
 
-      // find the name by slug (must exist; adding new names will be a later step)
-      const { data: found, error: findErr } = await supabase
+      // 1) Try to find the name by slug
+      let { data: found, error: findErr } = await supabase
         .from("names")
         .select("id, display")
         .eq("normalized_slug", slug)
         .maybeSingle();
 
-      if (findErr) {
-        msg.className = "err";
-        msg.textContent = "Грешка при търсене: " + findErr.message;
-        return;
-      }
+      if (findErr) { msg.className = "err"; msg.textContent = "Грешка при търсене: " + findErr.message; return; }
+
+      // 2) If missing, create it (requires gender)
       if (!found) {
-        msg.className = "err";
-        msg.textContent = "Това име още не е в списъка. Ще добавяме имена в следваща стъпка.";
-        return;
+        if (!gender) { msg.className = "err"; msg.textContent = "Името липсва. Моля избери пол, за да го добавим."; return; }
+
+        const { data: insName, error: insNameErr } = await supabase
+          .from("names")
+          .insert({ display: nameInput, normalized_slug: slug, gender })
+          .select("id, display")
+          .maybeSingle();
+
+        if (insNameErr) {
+          // if conflict on slug (race condition), refetch and continue
+          if (insNameErr.message && insNameErr.message.toLowerCase().includes("duplicate")) {
+            const refetch = await supabase.from("names").select("id, display").eq("normalized_slug", slug).maybeSingle();
+            if (refetch.error || !refetch.data) { msg.className="err"; msg.textContent="Грешка при добавяне."; return; }
+            found = refetch.data;
+          } else {
+            msg.className = "err"; msg.textContent = "Неуспешно добавяне на име: " + insNameErr.message; return;
+          }
+        } else {
+          found = insName;
+        }
       }
 
-      // insert rating
-      const { error: insErr } = await supabase.from("ratings").insert({
+      // 3) Insert rating (as holder)
+      const { error: insRateErr } = await supabase.from("ratings").insert({
         name_id: found.id,
         rater_is_holder: true,
         age_bucket: age,
@@ -182,21 +196,12 @@
         user_fingerprint: getFingerprint()
       });
 
-      if (insErr) {
-        msg.className = "err";
-        msg.textContent = "Неуспешно записване: " + insErr.message;
-        return;
-      }
+      if (insRateErr) { msg.className = "err"; msg.textContent = "Неуспешно записване: " + insRateErr.message; return; }
 
       msg.className = "ok";
       msg.textContent = "Готово! Благодарим 😊";
-
-      // refresh the list so you can see averages/votes change
       await loadTop();
     });
   </script>
 </body>
 </html>
-
-
-  
