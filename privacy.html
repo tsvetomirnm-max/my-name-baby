@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="bg">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Моето Име — Поверителност</title>
+  <link rel="stylesheet" href="/assets/base.css">
+</head>
+<body>
+  <div class="wrap">
+    <nav class="nav">
+      <div class="brand"><a href="/">Моето Име</a></div>
+      <div class="links">
+        <a href="/">Начало</a>
+        <a href="/add-name.html">Добави име</a>
+        <a href="/game.html">Игра</a>
+        <a href="/about.html">За нас</a>
+        <a href="/privacy.html">Поверителност</a>
+      </div>
+    </nav>
+
+    <div class="card">
+      <h1>Поверителност и бисквитки</h1>
+      <p><strong>Какво събираме:</strong> псевдонимно устройство ID, оценки (1–5), пол/възрастова група ако са избрани, и по желание имейл при контакт. Не изискваме профил.</p>
+      <p><strong>Защо:</strong> за да предотвратим дублирани гласове и да позволим да променяш своя вот от същото устройство.</p>
+      <p><strong>Бисквитки:</strong> използваме една функционална бисквитка (<code>fp_mnb</code>) за устройствено ID. Ако откажеш бисквитки, запазваме ID само в паметта на устройството (localStorage) и приложението продължава да работи.</p>
+      <p><strong>Право да бъдеш забравен:</strong> пиши ни през страницата „За нас“ и включи имейл/детайли, за да можем да намерим записа и да го изтрием.</p>
+
+      <h2>Имейл & съобщения</h2>
+      <p>Съобщенията от формата ни се съхраняват в база данни с цел обработка на обратна връзка.</p>
+
+      <h2>GDPR/DSAR</h2>
+      <p>За достъп/изтриване на данни свързани с твоето устройство ID или имейл, пиши ни през формата за контакт.</p>
+
+      <h2>SQL за таблица „messages“ (пусни в Supabase → SQL)</h2>
+      <pre class="tiny">
+create extension if not exists pgcrypto;
+create table if not exists public.messages (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamp with time zone default now(),
+  email text,
+  body text not null,
+  user_fingerprint text,
+  user_agent text
+);
+      </pre>
+    </div>
+  </div>
+
+  <script type="module">
+    import "/assets/app.js"; // banner shows if needed
+  </script>
+</body>
+</html>
