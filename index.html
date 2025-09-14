@@ -113,7 +113,18 @@
       for (const [re,to] of repl) s = s.replace(re,to);
       return s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
     }
+// fast Cyrillic validator (2–60 chars, letters + space/hyphen)
+// Uses Unicode property escapes when available, else a fallback range.
+function makeCyrillicRegex(){
+  try { return new RegExp("^\\p{Script=Cyrillic}[\\p{Script=Cyrillic}\\s-]{1,59}$","u"); }
+  catch { return /^[\u0400-\u04FF\u0500-\u052F\u2DE0-\u2DFF\uA640-\uA69F][\u0400-\u04FF\u0500-\u052F\u2DE0-\u2DFF\uA640-\uA69F \-]{1,59}$/; }
+}
+const CYRILLIC_NAME_RE = makeCyrillicRegex();
 
+function isCyrillicName(s){
+  s = (s||"").trim().replace(/\u00A0/g," ");
+  return CYRILLIC_NAME_RE.test(s);
+}
     // READ: top 10
     async function loadTop(){
       const { data, error } = await supabase
@@ -152,6 +163,11 @@
         msg.className = "err"; msg.textContent = "Моля попълни име, възраст и оценка."; return;
       }
 
+      if (!isCyrillicName(nameInput)) {
+  msg.className = "err";
+  msg.textContent = "Моля въведи лично име на кирилица (2–60 знака).";
+  return;
+}
       const slug = slugBg(nameInput);
 
       // 1) Try to find the name by slug
