@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="bg">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Моето Име — Добави име</title>
+  <link rel="stylesheet" href="/assets/base.css">
+</head>
+<body>
+  <div class="wrap">
+    <nav class="nav">
+      <div class="brand"><a href="/">Моето Име</a></div>
+      <div class="links">
+        <a href="/">Начало</a>
+        <a href="/add-name.html">Добави име</a>
+        <a href="/game.html">Игра</a>
+        <a href="/about.html">За нас</a>
+        <a href="/privacy.html">Поверителност</a>
+      </div>
+    </nav>
+
+    <div class="card">
+      <h1>Добави ново име</h1>
+      <p class="muted">Ако името вече съществува, ще получиш съобщение.</p>
+      <label>Име (кирилица)
+        <input id="nm" type="text" placeholder="напр. Теодора">
+      </label>
+      <div class="radio-group">
+        <input class="radio" type="radio" name="gender" id="a-m" value="m"><label for="a-m">М</label>
+        <input class="radio" type="radio" name="gender" id="a-f" value="f"><label for="a-f">Ж</label>
+        <input class="radio" type="radio" name="gender" id="a-u" value="u"><label for="a-u">За всички</label>
+      </div>
+      <button id="add">Добави</button>
+      <p id="ms" class="muted"></p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase, slugBg, isCyrillicName } from "/assets/app.js";
+    const msg = document.getElementById("ms");
+    document.getElementById("add").onclick = async ()=>{
+      msg.className="muted"; msg.textContent="Записваме…";
+      const display = document.getElementById("nm").value.trim();
+      const g = (document.getElementById("a-m").checked && 'm') || (document.getElementById("a-f").checked && 'f') || (document.getElementById("a-u").checked && 'u') || "";
+      if (!display || !g){ msg.className="err"; msg.textContent="Моля въведи име и пол."; return; }
+      if (!isCyrillicName(display)){ msg.className="err"; msg.textContent="Само кирилица (2–60 знака)."; return; }
+      const slug = slugBg(display);
+      const { data, error } = await supabase.from("names").insert({ display, normalized_slug: slug, gender:g }).select("id").maybeSingle();
+      if (error){
+        if ((error.message||"").toLowerCase().includes("duplicate")){ msg.className="ok"; msg.textContent="Името вече съществува."; }
+        else { msg.className="err"; msg.textContent="Грешка: " + error.message; }
+      } else { msg.className="ok"; msg.textContent="Добавено! Благодарим 🙌"; }
+    };
+  </script>
+</body>
+</html>
