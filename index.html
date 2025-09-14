@@ -19,6 +19,7 @@
     input[type="text"], select{
       width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #E5E7EB; border-radius:10px; outline:none;
     }
+
     /* primary buttons */
     button{margin-top:12px; padding:10px 16px; border-radius:999px; border:0; background:#1E90FF; color:#fff; cursor:pointer}
 
@@ -72,6 +73,15 @@
     .row-star svg{width:24px; height:24px; stroke:#1E90FF; stroke-width:2px; fill:transparent; transition:fill .12s ease}
     .row-star.filled svg{fill:#1E90FF}
     .cta-mini{font-size:12px; color:#64748B; margin-right:6px}
+
+    /* tiny icons */
+    .icon{width:14px;height:14px;vertical-align:-2px;display:inline-block}
+    .icon-star path{stroke:#1E90FF;fill:#1E90FF;stroke-width:2px}
+    .icon-person path{fill:#64748B}
+
+    /* inline save tick */
+    .saved-tick{display:none;margin-left:8px;color:#0f766e;font-weight:600}
+    .saved-tick.show{display:inline}
   </style>
 </head>
 <body>
@@ -106,7 +116,7 @@
         </label>
 
         <label>Оценка (1–5)
-          <div id="star-rating" class="star-wrap" role="radiogroup" aria-label="Оценка 1 до 5">
+          <div id="star-rating" class="star-wrap" role="radiогroup" aria-label="Оценка 1 до 5">
             <button type="button" class="star" data-value="1" role="radio" aria-checked="false" aria-label="1 звезда">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>
             </button>
@@ -163,13 +173,17 @@
     // Supabase (public anon key is OK to expose)
     const SUPABASE_URL  = "https://ldabujbsyyqhewzlrjcg.supabase.co";
     const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxkYWJ1amJzeXlxaGV3emxyamNnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4NjE2MjIsImV4cCI6MjA3MzQzNzYyMn0.0s04-DXbURuaadddeWxzQWbpwYEi9_t7NGheMrqEN4w";
-
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
+
     const msg  = document.getElementById("msg");
     const isAdmin = new URLSearchParams(location.search).has("admin");
 
     // debounce helper
     const debounce = (fn, ms=300) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; };
+
+    // inline SVGs
+    const STAR_SVG_14   = '<svg class="icon icon-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>';
+    const PERSON_SVG_14 = '<svg class="icon icon-person" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5z"/></svg>';
 
     // cookie-backed device ID (1 year)
     function getFingerprint(){
@@ -255,6 +269,48 @@
     const results = document.getElementById("search-results");
     const head = document.getElementById('results-head');
     let currentGender = "all";
+    let myVotes = new Map(); // nameId -> score for this device
+
+    // tiny helper for row star painting
+    function paintRowStars(container, n){
+      container.querySelectorAll('.row-star').forEach((btn,i)=>{
+        btn.classList.toggle('filled', i < n);
+      });
+    }
+
+    async function searchNow(){
+      const term = qInput.value.trim();
+      let q = supabase.from("name_stats")
+        .select("id, display, gender, avg_holder, avg_total, votes_total, normalized_slug");
+      if (term) q = q.ilike("display", `%${term}%`);
+      if (currentGender !== "all") q = q.eq("gender", currentGender);
+      q = q.order("bayesian_total", { ascending:false }).limit(25);
+
+      const { data, error } = await q;
+      if (error){ results.innerHTML = `<li class="muted">Грешка: ${error.message}</li>`; head.style.display="none"; return; }
+
+      // load my votes for the visible rows
+      const ids = (data||[]).map(r => r.id);
+      myVotes = new Map();
+      if (ids.length){
+        const { data: mine } = await supabase
+          .from("ratings")
+          .select("name_id, score")
+          .in("name_id", ids)
+          .eq("user_fingerprint", getFingerprint());
+        (mine||[]).forEach(v => myVotes.set(v.name_id, v.score));
+      }
+      renderResults(data);
+    }
+
+    qInput.addEventListener("input", debounce(searchNow, 250));
+    chips.addEventListener("click", (e)=>{
+      const btn = e.target.closest(".chip"); if (!btn) return;
+      [...chips.querySelectorAll(".chip")].forEach(c=>c.classList.remove("active"));
+      btn.classList.add("active");
+      currentGender = btn.dataset.g;
+      searchNow();
+    });
 
     function renderResults(rows){
       results.innerHTML = "";
@@ -271,9 +327,15 @@
         li.dataset.id = r.id;
 
         const c1 = document.createElement("div"); c1.textContent = r.display;
-        const c2 = document.createElement("div"); c2.className = "muted"; c2.textContent = (r.avg_holder ?? "—");
-        const c3 = document.createElement("div"); c3.className = "muted"; c3.textContent = (r.avg_total ?? "—");
-        const c4 = document.createElement("div"); c4.className = "muted"; c4.textContent = (r.votes_total ?? 0);
+
+        const c2 = document.createElement("div"); c2.className = "muted";
+        c2.innerHTML = `${r.avg_holder ?? "—"} ${STAR_SVG_14}`;
+
+        const c3 = document.createElement("div"); c3.className = "muted";
+        c3.innerHTML = `${r.avg_total ?? "—"} ${STAR_SVG_14}`;
+
+        const c4 = document.createElement("div"); c4.className = "muted";
+        c4.innerHTML = `${r.votes_total ?? 0} ${PERSON_SVG_14}`;
 
         const c5 = document.createElement("div");
         c5.innerHTML = `
@@ -284,54 +346,45 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>
               </button>`).join("")}
           </div>
+          <span class="saved-tick" title="Записано">✔</span>
         `;
 
         li.append(c1,c2,c3,c4,c5);
         results.append(li);
+
+        // prefill my previous vote
+        const bar = li.querySelector(".row-stars");
+        const mine = myVotes.get(r.id) || 0;
+        paintRowStars(bar, mine);
       }
     }
 
-    async function searchNow(){
-      const term = qInput.value.trim();
-      let q = supabase.from("name_stats")
-        .select("id, display, gender, avg_holder, avg_total, votes_total, normalized_slug");
-      if (term) q = q.ilike("display", `%${term}%`);
-      if (currentGender !== "all") q = q.eq("gender", currentGender);
-      q = q.order("bayesian_total", { ascending:false }).limit(25);
-      const { data, error } = await q;
-      if (error){ results.innerHTML = `<li class="muted">Грешка: ${error.message}</li>`; head.style.display="none"; return; }
-      renderResults(data);
-    }
-    qInput.addEventListener("input", debounce(searchNow, 250));
-    chips.addEventListener("click", (e)=>{
-      const btn = e.target.closest(".chip"); if (!btn) return;
-      [...chips.querySelectorAll(".chip")].forEach(c=>c.classList.remove("active"));
-      btn.classList.add("active");
-      currentGender = btn.dataset.g;
-      searchNow();
-    });
+    // initial list
     searchNow();
 
-    // ===== INLINE QUICK RATING (non-holder) with short delay =====
+    // ===== INLINE QUICK RATING (non-holder) with short delay (no reorder) =====
     const pendingTimers = new Map();
     const pendingValues = new Map();
-    function paintRowStars(container, n){
-      container.querySelectorAll('.row-star').forEach((btn,i)=>{
-        btn.classList.toggle('filled', i < n);
-      });
-    }
+
     results.addEventListener("click", async (e)=>{
       const star = e.target.closest(".row-star");
       if (!star) return;
+
       const row = star.closest(".result-row");
       const nameId = row?.dataset?.id;
       if (!nameId) return;
+
       const val = Number(star.dataset.v || 0);
       const starBar = row.querySelector(".row-stars");
+
+      // visual feedback immediately
       paintRowStars(starBar, val);
+
+      // store latest choice and reset timer
       pendingValues.set(nameId, val);
       const old = pendingTimers.get(nameId); if (old) clearTimeout(old);
 
+      // after ~1.8s of no more clicks, save
       const tid = setTimeout(async ()=>{
         const score = pendingValues.get(nameId);
         pendingTimers.delete(nameId);
@@ -347,14 +400,24 @@
             user_fingerprint: getFingerprint()
           }, { onConflict: 'name_id,user_fingerprint' });
 
-        if (!error) { searchNow(); }
-        else {
+        if (!error) {
+          // remember locally, paint & tick — no list refresh to keep order
+          myVotes.set(nameId, score);
+          paintRowStars(starBar, score);
+
+          const tick = row.querySelector(".saved-tick");
+          if (tick){
+            tick.classList.add("show");
+            setTimeout(()=>tick.classList.remove("show"), 1600);
+          }
+        } else {
           const m = document.createElement('div');
           m.className = "muted tiny";
           m.textContent = "Неуспешно записване: " + (error.message || "грешка");
           row.append(m);
         }
       }, 1800);
+
       pendingTimers.set(nameId, tid);
     });
 
@@ -375,10 +438,7 @@
     enforceSingleHolderCard();
 
     // ===== SUBMIT SELF-RATING (holder) =====
-    // big stars
-    const starsEls = Array.from(document.querySelectorAll('#star-rating .star'));
     const scoreEl = document.getElementById("score");
-
     document.getElementById("send").addEventListener("click", async () => {
       msg.className = "muted"; msg.textContent = "Записваме…";
 
@@ -426,7 +486,6 @@
         }, { onConflict: 'name_id,user_fingerprint' });
 
       if (rateErr){
-        // If they already have a holder vote for another name, DB will throw unique-violation on uq_one_holder_per_device
         const msgTxt = (rateErr.message || "").toLowerCase().includes("uq_one_holder_per_device")
           ? "Вече си добавил име като носител от това устройство."
           : ("Неуспешно записване: " + rateErr.message);
@@ -434,10 +493,22 @@
       }
 
       msg.className = "ok"; msg.textContent = "Готово! Благодарим 😊";
-      searchNow();                 // update list
-      enforceSingleHolderCard();   // hide card if not admin
+
+      // update the row in-place (if visible) without reordering
+      const listRow = document.querySelector(`.result-row[data-id="${found.id}"]`);
+      if (listRow){
+        const bar = listRow.querySelector(".row-stars");
+        if (bar){ paintRowStars(bar, score); }
+        const tick = listRow.querySelector(".saved-tick");
+        if (tick){ tick.classList.add("show"); setTimeout(()=>tick.classList.remove("show"),1600); }
+        // remember my vote locally
+        // (so if user clicks again on list, it shows filled stars)
+        const id = found.id;
+        if (id) { myVotes.set(id, score); }
+      }
+
+      enforceSingleHolderCard(); // hide the card if not admin
     });
   </script>
 </body>
 </html>
-
