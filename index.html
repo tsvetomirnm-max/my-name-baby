@@ -24,6 +24,9 @@
     .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px}
     .ok{color:#0f766e}
     .err{color:#b91c1c}
+    .chips{display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 12px}
+.chip{padding:6px 10px; border:1px solid #E5E7EB; border-radius:999px; cursor:pointer; background:#fff}
+.chip.active{background:#1E90FF; color:#fff; border-color:#1E90FF}
   </style>
 </head>
 <body>
@@ -36,6 +39,22 @@
       <ul id="top-names"><li class="muted">Зареждане…</li></ul>
     </div>
 
+ <div class="card">
+  <h2>Разгледай имената</h2>
+  <label>Търси
+    <input id="q" type="text" placeholder="например: Иван, Ро, Ви…" />
+  </label>
+
+  <div class="chips" id="chips">
+    <button class="chip active" data-g="all">Всички</button>
+    <button class="chip" data-g="f">Момичета</button>
+    <button class="chip" data-g="m">Момчета</button>
+    <button class="chip" data-g="u">Уни</button>
+  </div>
+
+  <ul id="search-results"><li class="muted">Започни да пишеш или избери филтър.</li></ul>
+</div>
+  
     <!-- WRITE ONE RATING (can add name if missing) -->
     <div class="card">
       <h2>Дай оценка за собственото си име</h2>
@@ -148,6 +167,67 @@ function isCyrillicName(s){
       }
     }
     await loadTop();
+
+    // tiny debounce helper
+const debounce = (fn, ms=300) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; };
+
+const qInput = document.getElementById("q");
+const chips  = document.getElementById("chips");
+const results = document.getElementById("search-results");
+
+let currentGender = "all";
+
+function renderResults(rows){
+  results.innerHTML = "";
+  if (!rows || rows.length === 0){
+    results.innerHTML = '<li class="muted">Няма съвпадения.</li>';
+    return;
+  }
+  for (const r of rows){
+    const li = document.createElement("li");
+    const left = document.createElement("div");
+    left.textContent = r.display;
+    const right = document.createElement("div");
+    right.className = "muted";
+    right.textContent = `Носители ★${r.avg_holder ?? "—"} · Общо ★${r.avg_total ?? "—"} · ${r.votes_total ?? 0} гласа`;
+    li.append(left,right);
+    results.append(li);
+  }
+}
+
+async function searchNow(){
+  const term = qInput.value.trim();
+  let q = supabase.from("name_stats").select("display, gender, avg_holder, avg_total, votes_total, normalized_slug");
+
+  if (term) q = q.ilike("display", `%${term}%`);
+  if (currentGender !== "all") q = q.eq("gender", currentGender);
+
+  // show something sensible even with empty search
+  q = q.order("bayesian_total", { ascending:false }).limit(25);
+
+  const { data, error } = await q;
+  if (error){
+    results.innerHTML = `<li class="muted">Грешка: ${error.message}</li>`;
+    return;
+  }
+  renderResults(data);
+}
+
+// events
+qInput.addEventListener("input", debounce(searchNow, 250));
+
+chips.addEventListener("click", (e)=>{
+  const btn = e.target.closest(".chip");
+  if (!btn) return;
+  [...chips.querySelectorAll(".chip")].forEach(c=>c.classList.remove("active"));
+  btn.classList.add("active");
+  currentGender = btn.dataset.g;
+  searchNow();
+});
+
+// initial load for "Всички"
+searchNow();
+
 
     // WRITE: add name if missing, then insert rating
     document.getElementById("send").addEventListener("click", async () => {
