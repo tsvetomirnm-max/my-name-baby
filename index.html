@@ -45,14 +45,24 @@
         </label>
         <label>Оценка (1–5)
           <div id="star-rating" class="star-wrap" role="radiogroup" aria-label="Оценка 1 до 5">
-            ${[1,2,3,4,5].map(v=>`<button type="button" class="star" data-value="${v}" role="radio" aria-checked="false" aria-label="${v} звезди"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg></button>`).join("")}
-          </div>
-          <input id="score" type="hidden" value="">
-        </label>
-      </div>
-      <button id="send">Изпрати</button>
-      <p id="msg" class="muted"></p>
-    </div>
+  <button type="button" class="star" data-value="1" role="radio" aria-checked="false" aria-label="1 звезда">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>
+  </button>
+  <button type="button" class="star" data-value="2" role="radio" aria-checked="false" aria-label="2 звезди">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>
+  </button>
+  <button type="button" class="star" data-value="3" role="radio" aria-checked="false" aria-label="3 звезди">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>
+  </button>
+  <button type="button" class="star" data-value="4" role="radio" aria-checked="false" aria-label="4 звезди">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>
+  </button>
+  <button type="button" class="star" data-value="5" role="radio" aria-checked="false" aria-label="5 звезди">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.9 6.2 20.3l1.1-6.4L2.6 9.3l6.5-.9L12 2.5z"/></svg>
+  </button>
+</div>
+<input id="score" type="hidden" value="">
+
 
     <!-- Browse / Search -->
     <div class="card">
