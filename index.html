@@ -31,12 +31,13 @@
     .chip.active{background:#1E90FF; color:#fff; border-color:#1E90FF}
     .chip:focus-visible{outline:2px solid #1E90FF; outline-offset:2px}
 
-    /* grid helpers */
+    /* grids */
     .row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
     .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px}
 
     .ok{color:#0f766e}
     .err{color:#b91c1c}
+    .tiny{font-size:12px; color:#64748B; margin-top:6px}
 
     /* Stars (big) */
     .star-wrap{display:flex; gap:10px; align-items:center; padding:4px 0}
@@ -59,7 +60,6 @@
     .radio:focus-visible + label{ outline:2px solid #1E90FF; outline-offset:2px }
     .radio[disabled] + label{ opacity:.5; cursor:not-allowed }
     .radio-group.disabled label{ opacity:.5; pointer-events:none }
-    .tiny{font-size:12px; color:#64748B; margin-top:6px}
 
     /* Browse table-like layout */
     .results-head{display:grid; grid-template-columns: 2fr 1fr 1fr .8fr 1.6fr; gap:12px; font-size:12px; color:#64748B; margin:6px 0 8px}
@@ -76,8 +76,8 @@
 </head>
 <body>
   <div class="wrap">
-    <!-- RATING CARD FIRST -->
-    <div class="card">
+    <!-- HOLDER RATING CARD -->
+    <div class="card" id="holder-card">
       <h1>Колко обичаш името си</h1>
       <p class="muted">Въведи името си на кирилица, избери възрастова група и постави оценка 1–5.</p>
 
@@ -131,7 +131,7 @@
       <p id="msg" class="muted"></p>
     </div>
 
-    <!-- BROWSE / SEARCH CARD SECOND -->
+    <!-- BROWSE / SEARCH CARD -->
     <div class="card">
       <h2>Разгледай имената</h2>
       <label>Търси
@@ -166,6 +166,7 @@
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
     const msg  = document.getElementById("msg");
+    const isAdmin = new URLSearchParams(location.search).has("admin");
 
     // debounce helper
     const debounce = (fn, ms=300) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; };
@@ -191,9 +192,7 @@
       const repl = [
         [/щ/gi,"sht"], [/ш/gi,"sh"],  [/ч/gi,"ch"],  [/ж/gi,"zh"],
         [/ц/gi,"ts"],  [/ю/gi,"yu"],  [/я/gi,"ya"],  [/й/gi,"y"],
-        [/[\u045D\u040D]/g,"i"],      // ѝ Ѝ
-        [/[ьЬ]/g,""],                 // ь
-        [/ъ/gi,"a"],
+        [/[\u045D\u040D]/g,"i"], [/[ьЬ]/g,""], [/ъ/gi,"a"],
         [/а/gi,"a"], [/б/gi,"b"], [/в/gi,"v"], [/г/gi,"g"], [/д/gi,"d"],
         [/е/gi,"e"], [/з/gi,"z"], [/и/gi,"i"], [/к/gi,"k"], [/л/gi,"l"],
         [/м/gi,"m"], [/н/gi,"n"], [/о/gi,"o"], [/п/gi,"p"], [/р/gi,"r"],
@@ -248,7 +247,6 @@
       if (!data){ setGenderUI(null,false); return; }
       setGenderUI(data.gender, true);
     }, 300);
-
     nameEl.addEventListener('input', detectGender);
 
     // ===== BROWSE / SEARCH =====
@@ -312,12 +310,11 @@
       currentGender = btn.dataset.g;
       searchNow();
     });
-    // initial default: top names
     searchNow();
 
     // ===== INLINE QUICK RATING (non-holder) with short delay =====
-    const pendingTimers = new Map();   // nameId -> timeoutId
-    const pendingValues = new Map();   // nameId -> last chosen value
+    const pendingTimers = new Map();
+    const pendingValues = new Map();
     function paintRowStars(container, n){
       container.querySelectorAll('.row-star').forEach((btn,i)=>{
         btn.classList.toggle('filled', i < n);
@@ -361,20 +358,36 @@
       pendingTimers.set(nameId, tid);
     });
 
+    // ===== HIDE HOLDER CARD AFTER ONE HOLDER VOTE (unless ?admin=1) =====
+    async function enforceSingleHolderCard(){
+      if (isAdmin) return;
+      const { data } = await supabase
+        .from("ratings")
+        .select("id")
+        .eq("user_fingerprint", getFingerprint())
+        .eq("rater_is_holder", true)
+        .maybeSingle();
+      if (data) {
+        const card = document.getElementById('holder-card');
+        if (card) card.style.display = 'none';
+      }
+    }
+    enforceSingleHolderCard();
+
     // ===== SUBMIT SELF-RATING (holder) =====
+    // big stars
+    const starsEls = Array.from(document.querySelectorAll('#star-rating .star'));
+    const scoreEl = document.getElementById("score");
+
     document.getElementById("send").addEventListener("click", async () => {
       msg.className = "muted"; msg.textContent = "Записваме…";
 
       const nameInput = nameEl.value.trim();
-      const age = document.getElementById("age").value;      // may be ""
-      const score = Number(document.getElementById("score").value || 0);
+      const age = document.getElementById("age").value;
+      const score = Number(scoreEl.value || 0);
 
-      if (!nameInput || !score) {
-        msg.className = "err"; msg.textContent = "Моля попълни име и оценка (звезди)."; return;
-      }
-      if (!isCyrillicName(nameInput)) {
-        msg.className = "err"; msg.textContent = "Моля въведи лично име на кирилица (2–60 знака)."; return;
-      }
+      if (!nameInput || !score) { msg.className = "err"; msg.textContent = "Моля попълни име и оценка (звезди)."; return; }
+      if (!isCyrillicName(nameInput)) { msg.className = "err"; msg.textContent = "Моля въведи лично име на кирилица (2–60 знака)."; return; }
 
       const slug = slugBg(nameInput);
 
@@ -386,12 +399,12 @@
 
       if (!found){
         const gender = (gM.checked && 'm') || (gF.checked && 'f') || (gU.checked && 'u') || "";
-        if (!gender){
-          msg.className="err"; msg.textContent="Името липсва. Моля избери пол, за да го добавим."; return;
-        }
+        if (!gender){ msg.className="err"; msg.textContent="Името липсва. Моля избери пол, за да го добавим."; return; }
+
         const { data: insName, error: insErr } = await supabase
           .from("names").insert({ display: nameInput, normalized_slug: slug, gender })
           .select("id, display").maybeSingle();
+
         if (insErr){
           if (insErr.message?.toLowerCase().includes("duplicate")){
             const ref = await supabase.from("names").select("id, display").eq("normalized_slug", slug).maybeSingle();
@@ -401,7 +414,7 @@
         } else { found = insName; }
       }
 
-      // upsert rating as holder (allows changing your score)
+      // upsert rating as holder (allows changing your score for that SAME name)
       const { error: rateErr } = await supabase
         .from("ratings")
         .upsert({
@@ -412,11 +425,19 @@
           user_fingerprint: getFingerprint()
         }, { onConflict: 'name_id,user_fingerprint' });
 
-      if (rateErr){ msg.className="err"; msg.textContent="Неуспешно записване: " + rateErr.message; return; }
+      if (rateErr){
+        // If they already have a holder vote for another name, DB will throw unique-violation on uq_one_holder_per_device
+        const msgTxt = (rateErr.message || "").toLowerCase().includes("uq_one_holder_per_device")
+          ? "Вече си добавил име като носител от това устройство."
+          : ("Неуспешно записване: " + rateErr.message);
+        msg.className="err"; msg.textContent=msgTxt; return;
+      }
 
       msg.className = "ok"; msg.textContent = "Готово! Благодарим 😊";
-      searchNow(); // update list stats
+      searchNow();                 // update list
+      enforceSingleHolderCard();   // hide card if not admin
     });
   </script>
 </body>
 </html>
+
