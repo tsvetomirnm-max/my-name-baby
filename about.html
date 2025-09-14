@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="bg">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Моето Име — За нас</title>
+  <link rel="stylesheet" href="/assets/base.css">
+</head>
+<body>
+  <div class="wrap">
+    <nav class="nav">
+      <div class="brand"><a href="/">Моето Име</a></div>
+      <div class="links">
+        <a href="/">Начало</a>
+        <a href="/add-name.html">Добави име</a>
+        <a href="/game.html">Игра</a>
+        <a href="/about.html">За нас</a>
+        <a href="/privacy.html">Поверителност</a>
+      </div>
+    </nav>
+
+    <div class="card">
+      <h1>За „Моето Име“</h1>
+      <p>Проект за забавна и полезна статистика: колко харесваме собствените си имена и кои имена ни допадат като посетители.</p>
+      <p>Започваме от България — ако ти харесва идеята, пиши ни.</p>
+    </div>
+
+    <div class="card">
+      <h2>Контакт</h2>
+      <label>Съобщение
+        <textarea id="body" rows="4" placeholder="Пиши ни идея, обратна връзка или въпрос…"></textarea>
+      </label>
+      <label>Имейл (по желание)
+        <input id="email" type="text" placeholder="твоят имейл (по желание)">
+      </label>
+      <button id="send">Изпрати</button>
+      <p id="msg" class="muted"></p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase, getFingerprint } from "/assets/app.js";
+    // Make sure you have a 'messages' table (see SQL in privacy page)
+    const msg = document.getElementById("msg");
+    document.getElementById("send").onclick = async ()=>{
+      const body = document.getElementById("body").value.trim();
+      const email = document.getElementById("email").value.trim() || null;
+      if (!body){ msg.className="err"; msg.textContent="Моля въведи съобщение."; return; }
+      msg.className="muted"; msg.textContent="Изпращаме…";
+      const { error } = await supabase.from("messages").insert({
+        body, email, user_fingerprint: getFingerprint(), user_agent: navigator.userAgent || null
+      });
+      msg.className = error ? "err" : "ok";
+      msg.textContent = error ? ("Грешка: " + error.message) : "Благодарим! Ще се свържем при нужда.";
+      if (!error){ document.getElementById("body").value=""; document.getElementById("email").value=""; }
+    };
+  </script>
+</body>
+</html>
